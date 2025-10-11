@@ -1,0 +1,8 @@
+[package]
+name = "cpy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+indicatif = "0.18.0"
+walkdir = "2.5.0"
