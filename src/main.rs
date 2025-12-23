@@ -1,12 +1,19 @@
 mod cli;
 
-use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
-use std::error::Error;
-use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    error::Error,
+    fs,
+    path::{
+        Path,
+        PathBuf,
+    },
+};
 
+use clap::Parser;
+use indicatif::{
+    ProgressBar,
+    ProgressStyle,
+};
 use walkdir::WalkDir;
 
 fn start(input: &PathBuf, output: &PathBuf, pb: ProgressBar) -> Result<(), Box<dyn Error>> {
@@ -38,21 +45,20 @@ fn count_files(path: &PathBuf) -> usize {
         .count()
 }
 
-fn init_pb(total_files: usize) -> ProgressBar {
+fn init_pb(total_files: usize) -> Result<ProgressBar, Box<dyn Error>> {
     let pb = ProgressBar::new(total_files as u64);
     pb.set_style(
         ProgressStyle::with_template(
             "[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}",
-        )
-        .unwrap()
+        )?
         .progress_chars("▰▰▱▱ "),
     );
     pb.set_message("Copy in progress...");
 
-    pb
+    Ok(pb)
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = cli::Args::parse();
 
     let source = PathBuf::from(args.source);
@@ -70,10 +76,12 @@ fn main() {
 
     let total_files = count_files(&source);
 
-    let pb = init_pb(total_files);
+    let pb = init_pb(total_files)?;
 
     if let Err(e) = start(&source, &output, pb) {
         eprintln!("Error during copy: {}", e);
         std::process::exit(0);
     }
+
+    Ok(())
 }
