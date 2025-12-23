@@ -14,9 +14,16 @@ use indicatif::{
     ProgressBar,
     ProgressStyle,
 };
+use rand::{
+    Rng,
+    rng,
+};
 use walkdir::WalkDir;
 
-fn start(input: &PathBuf, output: &PathBuf, pb: ProgressBar) -> Result<(), Box<dyn Error>> {
+/// Available progress bar colors
+const COLORS: &[&str] = &["red", "green", "yellow", "blue", "cyan", "magenta", "white"];
+
+fn start(input: &PathBuf, output: &PathBuf, pb: &ProgressBar) -> Result<(), Box<dyn Error>> {
     WalkDir::new(input)
         .into_iter()
         .try_for_each(|entry| -> Result<(), Box<dyn Error>> {
@@ -47,12 +54,16 @@ fn count_files(path: &PathBuf) -> usize {
 
 fn init_pb(total_files: usize) -> Result<ProgressBar, Box<dyn Error>> {
     let pb = ProgressBar::new(total_files as u64);
-    pb.set_style(
-        ProgressStyle::with_template(
-            "[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}",
-        )?
-        .progress_chars("▰▰▱▱ "),
-    );
+    let color = COLORS[rand::rng().random_range(0..COLORS.len())];
+
+    let ps = ProgressStyle::default_bar()
+        .template(&format!(
+            "[{{elapsed_precise}}] [{{bar:40.{}}}] {{pos:>7}}/{{len:7}} {{msg}}",
+            color
+        ))?
+        .progress_chars("▰▰▱▱ ");
+
+    pb.set_style(ps);
     pb.set_message("Copy in progress...");
 
     Ok(pb)
@@ -63,6 +74,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let source = PathBuf::from(args.source);
     let output = PathBuf::from(args.target);
+
+    let flush = args.flush;
 
     if !source.exists() {
         eprintln!("No such file or directory: {}", source.display());
@@ -78,9 +91,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pb = init_pb(total_files)?;
 
-    if let Err(e) = start(&source, &output, pb) {
+    if let Err(e) = start(&source, &output, &pb) {
         eprintln!("Error during copy: {}", e);
         std::process::exit(0);
+    }
+
+    if !flush {
+        pb.finish_with_message("Copy complete");
     }
 
     Ok(())

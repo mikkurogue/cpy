@@ -8,4 +8,10 @@ pub struct Args {
 
     /// An output for the copy
     pub target: String,
+
+    #[clap(short = 's', long, default_value_t = false)]
+    pub show_current: bool,
+
+    #[clap(short = 'f', long, default_value_t = false)]
+    pub flush: bool,
 }
