@@ -1,26 +1,32 @@
+mod cli;
+
+use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
+use std::error::Error;
+use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 use walkdir::WalkDir;
 
-fn start(
-    input: &PathBuf,
-    output: &PathBuf,
-    pb: indicatif::ProgressBar,
-) -> Result<(), Box<dyn std::error::Error>> {
-    WalkDir::new(input).into_iter().for_each(|entry| {
-        let entry = entry.unwrap();
-        let entry = entry.path();
+fn start(input: &PathBuf, output: &PathBuf, pb: ProgressBar) -> Result<(), Box<dyn Error>> {
+    WalkDir::new(input)
+        .into_iter()
+        .try_for_each(|entry| -> Result<(), Box<dyn Error>> {
+            let entry = entry?;
+            let entry = entry.path();
 
-        let relative_path = entry.strip_prefix(input).unwrap();
-        let output_path = std::path::Path::new(output).join(relative_path);
+            let relative_path = entry.strip_prefix(input)?;
+            let output_path = Path::new(output).join(relative_path);
 
-        if entry.is_dir() {
-            std::fs::create_dir_all(&output_path).unwrap();
-        } else {
-            std::fs::copy(entry, &output_path).unwrap();
-        }
-        pb.inc(1);
-    });
+            if entry.is_dir() {
+                fs::create_dir_all(&output_path)?;
+            } else {
+                fs::copy(entry, &output_path)?;
+            }
+            pb.inc(1);
+            Ok(())
+        })?;
 
     Ok(())
 }
@@ -32,10 +38,10 @@ fn count_files(path: &PathBuf) -> usize {
         .count()
 }
 
-fn init_pb(total_files: usize) -> indicatif::ProgressBar {
-    let pb = indicatif::ProgressBar::new(total_files as u64);
+fn init_pb(total_files: usize) -> ProgressBar {
+    let pb = ProgressBar::new(total_files as u64);
     pb.set_style(
-        indicatif::ProgressStyle::with_template(
+        ProgressStyle::with_template(
             "[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}",
         )
         .unwrap()
@@ -47,19 +53,13 @@ fn init_pb(total_files: usize) -> indicatif::ProgressBar {
 }
 
 fn main() {
-    let path = std::env::args()
-        .nth(1)
-        .expect("A file or directory path to copy is required");
+    let args = cli::Args::parse();
 
-    let output = std::env::args()
-        .nth(2)
-        .expect("An output for the copy is required");
+    let source = PathBuf::from(args.source);
+    let output = PathBuf::from(args.target);
 
-    let path = PathBuf::from(path);
-    let output = PathBuf::from(output);
-
-    if !path.exists() {
-        eprintln!("No such file or directory: {}", path.display());
+    if !source.exists() {
+        eprintln!("No such file or directory: {}", source.display());
         std::process::exit(0);
     }
 
@@ -68,11 +68,11 @@ fn main() {
         std::process::exit(0);
     }
 
-    let total_files = count_files(&path);
+    let total_files = count_files(&source);
 
     let pb = init_pb(total_files);
 
-    if let Err(e) = start(&path, &output, pb) {
+    if let Err(e) = start(&source, &output, pb) {
         eprintln!("Error during copy: {}", e);
         std::process::exit(0);
     }
