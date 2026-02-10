@@ -91,9 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pb = init_pb(total_files)?;
 
-    if let Err(e) = start(&source, &output, pb) {
-        eprintln!("Error during copy: {}", e);
-    if let Err(e) = start(&source, &output, pb) {
+    if let Err(e) = start(&source, &output, &pb) {
         eprintln!("An error occured when copying files: {}", e);
         std::process::exit(0);
     }
